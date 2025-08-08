@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text&Speech | Text to Speech Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .voice-preview {
+            transition: all 0.3s ease;
+        }
+        
+        .voice-preview:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .voice-preview.active {
+            border-color: #4f46e5;
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+        
+        #text-input {
+            min-height: 150px;
+            resize: none;
+        }
+        
+        .waveform {
+            height: 60px;
+            background: linear-gradient(90deg, #4f46e5, #8b5cf6);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .waveform::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.3) 50%, 
+                transparent 100%);
+            animation: wave 2s linear infinite;
+            opacity: 0.6;
+        }
+        
+        @keyframes wave {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        
+        .play-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .play-btn:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="py-8 px-4">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-2">Text<>Speech</h1>
+            <p class="text-lg text-gray-600">Transform your text into natural sounding speech</p>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="bg-white rounded-xl shadow-xl overflow-hidden">
+            <div class="p-6 md:p-8">
+                <!-- Text Input Section -->
+                <div class="mb-8">
+                    <label for="text-input" class="block text-lg font-medium text-gray-700 mb-2">Enter your text</label>
+                    <textarea 
+                        id="text-input" 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                        placeholder="Type or paste your text here..."></textarea>
+                    
+                    <div class="flex flex-wrap gap-2 mt-3">
+                        <button id="clear-btn" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                            <i class="fas fa-eraser mr-2"></i>Clear
+                        </button>
+                        <button id="sample-btn" class="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition">
+                            <i class="fas fa-lightbulb mr-2"></i>Load Sample
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Voice Selection -->
+                <div class="mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-medium text-gray-700">Select a Voice</h2>
+                        <select id="language-select" class="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                            <option value="en">English</option>
+                            <option value="ta">Tamil</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="voice-container">
+                        <!-- Voices will be added here dynamically -->
+                    </div>
+                </div>
+                
+                <!-- Settings -->
+                <div class="mb-8">
+                    <h2 class="text-lg font-medium text-gray-700 mb-4">Settings</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="rate" class="block text-sm font-medium text-gray-600 mb-1">Speed</label>
+                            <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>Slower</span>
+                                <span>Normal</span>
+                                <span>Faster</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="pitch" class="block text-sm font-medium text-gray-600 mb-1">Pitch</label>
+                            <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>Lower</span>
+                                <span>Normal</span>
+                                <span>Higher</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Controls -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="waveform flex-1 hidden" id="waveform">
+                        <div class="flex items-center justify-center h-full text-white">
+                            <i class="fas fa-volume-up text-2xl mr-2"></i>
+                            <span>Playing...</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="play-btn" class="play-btn px-6 py-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition flex items-center">
+                            <i class="fas fa-play mr-2"></i> Play
+                        </button>
+                        <button id="stop-btn" class="play-btn px-6 py-3 bg-red-600 text-white rounded-full hover:bg-red-700 transition flex items-center">
+                            <i class="fas fa-stop mr-2"></i> Stop
+                        </button>
+                        <button id="download-btn" class="play-btn px-6 py-3 bg-green-600 text-white rounded-full hover:bg-green-700 transition flex items-center">
+                            <i class="fas fa-download mr-2"></i> Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <p class="text-gray-600 text-sm mb-2 md:mb-0">
+                        <i class="fas fa-info-circle mr-1"></i> Uses the Web Speech API for text-to-speech conversion
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-500 hover:text-indigo-600 transition">
+                            <i class="fab fa-github"></i>
+                        </a>
+                        <a href="#" class="text-gray-500 hover:text-indigo-600 transition">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-500 hover:text-indigo-600 transition">
+                            <i class="fas fa-envelope"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const textInput = document.getElementById('text-input');
+            const voiceContainer = document.getElementById('voice-container');
+            const rateInput = document.getElementById('rate');
+            const pitchInput = document.getElementById('pitch');
+            const playBtn = document.getElementById('play-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const sampleBtn = document.getElementById('sample-btn');
+            const waveform = document.getElementById('waveform');
+            
+            // Speech synthesis
+            const synth = window.speechSynthesis;
+            let voices = [];
+            let selectedVoice = null;
+            let utterance = null;
+            let isPlaying = false;
+            
+            // Sample text
+            const sampleTexts = {
+                en: "Hello! Welcome to Text<>Speech, your text-to-speech companion. This tool allows you to convert any written text into spoken words. You can adjust the voice, speed, and pitch to create the perfect audio output. Try it out by typing your own text or using our sample text. Enjoy the power of speech synthesis!",
+                ta: "வணக்கம்! வாய்ஸ்கிராஃப்டுக்கு வரவேற்கிறோம், உங்கள் உரை-முதல்-பேச்சு துணை. இந்த கருவி எந்த எழுதப்பட்ட உரையையும் பேசும் வார்த்தைகளாக மாற்ற உதவுகிறது. நீங்கள் குரல், வேகம் மற்றும் சுருதியை சரிசெய்து சரியான ஆடியோ வெளியீட்டை உருவாக்கலாம். உங்கள் சொந்த உரையை தட்டச்சு செய்வதன் மூலம் அல்லது எங்கள் மாதிரி உரையைப் பயன்படுத்துவதன் மூலம் முயற்சிக்கவும். பேச்சு தொகுப்பின் சக்தியை அனுபவிக்கவும்!"
+            };
+            
+            function loadSampleText() {
+                const lang = languageSelect.value;
+                textInput.value = sampleTexts[lang] || sampleTexts.en;
+            }
+            
+            // Initialize the app
+            function init() {
+                loadVoices();
+                
+                // Chrome needs this
+                if (speechSynthesis.onvoiceschanged !== undefined) {
+                    speechSynthesis.onvoiceschanged = loadVoices;
+                }
+                
+                // Event listeners
+                playBtn.addEventListener('click', playSpeech);
+                stopBtn.addEventListener('click', stopSpeech);
+                downloadBtn.addEventListener('click', downloadSpeech);
+                clearBtn.addEventListener('click', clearText);
+                sampleBtn.addEventListener('click', loadSampleText);
+                languageSelect.addEventListener('change', loadVoices);
+            }
+            
+            // DOM Elements
+            const languageSelect = document.getElementById('language-select');
+            
+            // Load available voices
+            function loadVoices() {
+                voices = synth.getVoices();
+                voiceContainer.innerHTML = '';
+                
+                const selectedLang = languageSelect.value;
+                let filteredVoices = [];
+                
+                if (selectedLang === 'en') {
+                    filteredVoices = voices.filter(voice => voice.lang.includes('en'));
+                } else if (selectedLang === 'ta') {
+                    filteredVoices = voices.filter(voice => voice.lang.includes('ta') || voice.lang.includes('tam'));
+                }
+                
+                if (filteredVoices.length === 0) {
+                    voiceContainer.innerHTML = `<p class="text-gray-500">No ${selectedLang === 'en' ? 'English' : 'Tamil'} voices available. Please try refreshing the page or selecting a different language.</p>`;
+                    selectedVoice = null;
+                    return;
+                }
+                
+                filteredVoices.forEach((voice, index) => {
+                    const voiceCard = document.createElement('div');
+                    voiceCard.className = `voice-preview p-4 border rounded-lg cursor-pointer transition ${index === 0 ? 'active border-indigo-500' : 'border-gray-200'}`;
+                    voiceCard.innerHTML = `
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 mr-3">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-medium">${voice.name}</h3>
+                                <p class="text-sm text-gray-500">${voice.lang} • ${voice.default ? 'Default' : ''}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    voiceCard.addEventListener('click', () => {
+                        document.querySelectorAll('.voice-preview').forEach(card => {
+                            card.classList.remove('active', 'border-indigo-500');
+                        });
+                        voiceCard.classList.add('active', 'border-indigo-500');
+                        selectedVoice = voice;
+                    });
+                    
+                    voiceContainer.appendChild(voiceCard);
+                    
+                    // Set first voice as default
+                    if (index === 0) {
+                        selectedVoice = voice;
+                    }
+                });
+            }
+            
+            // Play the speech
+            function playSpeech() {
+                if (isPlaying) {
+                    synth.resume();
+                    return;
+                }
+                
+                const text = textInput.value.trim();
+                if (!text) {
+                    showAlert('Please enter some text to convert to speech.');
+                    return;
+                }
+                
+                if (!selectedVoice) {
+                    showAlert('Please select a voice.');
+                    return;
+                }
+                
+                stopSpeech(); // Stop any current speech
+                
+                utterance = new SpeechSynthesisUtterance(text);
+                utterance.voice = selectedVoice;
+                utterance.rate = parseFloat(rateInput.value);
+                utterance.pitch = parseFloat(pitchInput.value);
+                
+                // Show waveform when playing
+                waveform.classList.remove('hidden');
+                isPlaying = true;
+                playBtn.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
+                
+                utterance.onend = () => {
+                    isPlaying = false;
+                    waveform.classList.add('hidden');
+                    playBtn.innerHTML = '<i class="fas fa-play mr-2"></i> Play';
+                };
+                
+                utterance.onpause = () => {
+                    isPlaying = false;
+                    playBtn.innerHTML = '<i class="fas fa-play mr-2"></i> Play';
+                };
+                
+                utterance.onresume = () => {
+                    isPlaying = true;
+                    playBtn.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
+                };
+                
+                synth.speak(utterance);
+            }
+            
+            // Stop the speech
+            function stopSpeech() {
+                synth.cancel();
+                isPlaying = false;
+                waveform.classList.add('hidden');
+                playBtn.innerHTML = '<i class="fas fa-play mr-2"></i> Play';
+            }
+            
+            // Download the speech (simulated since Web Speech API doesn't support direct download)
+            function downloadSpeech() {
+                const text = textInput.value.trim();
+                if (!text) {
+                    showAlert('Please enter some text to download.');
+                    return;
+                }
+                
+                // In a real implementation, you would use a TTS API that supports audio file generation
+                // This is just a simulation for the UI
+                showAlert('Audio file would be downloaded in a full implementation. This demo uses browser speech synthesis which doesn\'t support direct download.', 'info');
+                
+                // For a real implementation, you would need a backend service or use a TTS API
+                // that can generate audio files from text.
+            }
+            
+            // Clear the text input
+            function clearText() {
+                textInput.value = '';
+                textInput.focus();
+            }
+            
+            // Load sample text
+            function loadSampleText() {
+                textInput.value = sampleText;
+            }
+            
+            // Show alert message
+            function showAlert(message, type = 'error') {
+                const alert = document.createElement('div');
+                alert.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white ${
+                    type === 'error' ? 'bg-red-500' : 'bg-indigo-500'
+                }`;
+                alert.innerHTML = `
+                    <div class="flex items-center">
+                        <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-2"></i>
+                        <span>${message}</span>
+                    </div>
+                `;
+                
+                document.body.appendChild(alert);
+                
+                setTimeout(() => {
+                    alert.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                    setTimeout(() => {
+                        alert.remove();
+                    }, 300);
+                }, 3000);
+            }
+            
+            // Initialize the app
+            init();
+        });
+    </script>
+</body>
+</html>
